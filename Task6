@@ -1,0 +1,99 @@
+
+float val, voltage, temp,ldr;
+String ssid     = "Simulator Wifi";  
+String password = ""; 
+String host     = "api.thingspeak.com"; // Open Weather Map API
+const int httpPort   = 80;
+String url1  = "/update?api_key=NQI18XTAM18OSRXS&field1=0";
+String url2  = "/update?api_key=NQI18XTAM18OSRXS&field2=0";
+
+void setupESP8266(void) {
+  
+  
+  Serial.begin(115200);   
+  Serial.println("AT");   
+  delay(10);        
+  if (Serial.find("OK"))
+    Serial.println("ESP8266 OK!!!");
+    
+  // Connect to Simulator Wifi
+  Serial.println("AT+CWJAP=\"" + ssid + "\",\"" + password + "\"");
+  delay(10);        
+  if (Serial.find("OK"))
+    Serial.println("Connected to WiFi!!!");
+  
+  
+  Serial.println("AT+CIPSTART=\"TCP\",\"" + host + "\"," + httpPort);
+  delay(50);        
+  if (Serial.find("OK")) 
+   Serial.println("ESP8266 Connected to server!!!") ;
+ 
+}
+
+void anydata(void) {
+  
+  val=analogRead(A4);
+  voltage=val*0.0048828125; 
+  temp = (voltage - 0.5) * 100.0;
+  ldr=analogRead(A5);
+  
+   if ((ldr<550)&&(temp>30))
+    {
+      digitalWrite(5, HIGH);
+      digitalWrite(6, HIGH);
+    }
+    else if((ldr<550)&&(temp<30))
+    {
+      digitalWrite(5, HIGH);
+      digitalWrite(6, LOW);
+    }
+    else if((ldr>550)&&(temp>30))
+    {
+      digitalWrite(5, LOW);
+      digitalWrite(6, HIGH);
+    }
+    else if((ldr>550)&&(temp<30))
+    {
+      digitalWrite(5, LOW);
+      digitalWrite(6, LOW);
+    }
+   
+  
+  String httpPacket1 = "GET " + url1 + String(temp) + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
+  int length1 = httpPacket1.length();
+  Serial.print("AT+CIPSEND=");
+  Serial.println(length1);
+  delay(10);
+  Serial.print(httpPacket1);
+  delay(10); // Wait a little for the ESP to respond
+  if (Serial.find("SEND OK\r\n"))
+    Serial.println("ESP8266 sends data to the server");
+  
+  String httpPacket2 = "GET " + url2 + String(ldr) + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
+  int length2 = httpPacket2.length();
+  Serial.print("AT+CIPSEND=");
+  Serial.println(length2);
+  delay(10);
+  Serial.print(httpPacket2);
+  delay(10); 
+  if (Serial.find("SEND OK\r\n"))
+    Serial.println("ESP8266 sends data to the server");
+    
+}
+
+
+void setup() {
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(A5, INPUT); 
+  pinMode(A4, INPUT);
+  setupESP8266();
+               
+}
+
+void loop() {
+  
+ anydata();
+  
+  delay(4000); // delay changed for faster analytics
+}
